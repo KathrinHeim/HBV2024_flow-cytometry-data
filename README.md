@@ -26,7 +26,7 @@ all_file_paths        <- unlist(lapply(seq_along(files_by_ext), function(x) {  p
 names(all_file_paths) <- lapply(strsplit(all_file_paths,split="/"), function(x) { sub(".fcs","",x[length(x)]) } )
 file_names <- unname(unlist(lapply(strsplit(unlist(files_by_ext),split = "/"),tail,1)))
 
-#read the FCS files in the directory fcs/
+# Read the FCS files in the directory fcs/
 data_list <- list()
 fcs.par <- list()
 for (i in c(1:length(file_names))) {
@@ -34,14 +34,14 @@ for (i in c(1:length(file_names))) {
   fcs.par[[i]] <- as.character(data_list[[i]]@parameters@data$name)
 }
 
-# find all the measured FACS parameters
+# Find all the measured FACS parameters
 common.par <- Reduce(intersect, fcs.par)
 common.par
 
-# get all the fluorescent markers measured during FACS analysis
+# Get all the fluorescent markers measured during FACS analysis
 common.par <- common.par[7:21]
 
-#subset the FCS files for fluorescent markers measured during FACS analysis
+# Subset the FCS files for fluorescent markers measured during FACS analysis
 dir.create(paste0(getwd(),"/subsetFig2E/"))
 sub_data_list <- list()
 subset_file_names <- list()
@@ -52,10 +52,10 @@ for (i in c(1:length(file_names))) {
   subset_file_names[[i]] <- paste(sub(".fcs","",file_names[[i]]),"_subset",".fcs", sep = "")
 }
 
-#read the subset FCS files
+# Read the subset FCS files
 fs <- read.flowSet(path =paste0(getwd(),"/subsetFig2E/"))
 
-#create patient and sample annotations: 
+# Create patient and sample annotations: 
 md <- as.data.frame(as.character(unlist(subset_file_names)))
 colnames(md) <- c("file_name")
 md$patient_id <- str_split_fixed(md$file_name, "_", 5)[,1]
@@ -63,16 +63,16 @@ md$sample_id <-  "core"
 md$sample_id[str_detect(md$file_name, "pol")] <- "pol"
 md$condition <- paste(md$sample_id, md$patient_id, sep="_")
 
-#create panel annotations
+# Create panel annotations
 panel <- data.frame(as.character(sub_data_list[[1]]@parameters@data$name),as.character(sub_data_list[[1]]@parameters@data$desc))
 rownames(panel) <- c(1:dim(panel)[1])
 panel$marker_class <- c("type")
 colnames(panel) <- c("fcs_colname",	"antigen", "marker_class")
 
-# exclude the parameters not to be included in the dimensionality reduction
+# Exclude the parameters not to be included in the dimensionality reduction
 panel[grep("APC.Cy7.A|Ax700.A|BUV395.A|BUV496.A|PE.A",panel$fcs_colname),]$marker_class <- c("state")
 
-# create single cell experiment
+# Create single cell experiment
 sce <- prepData(
   fs,
   panel = panel,
@@ -88,20 +88,19 @@ for (i in 1:length(unique(sce$sample_id))) {
   print(paste("The number of cells in",as.character(unique(sce$sample_id)[i]), "are",length(sce$sample_id[sce$sample_id %in% as.character(unique(sce$sample_id)[i])])))
 }
 
-# plot the number of cells in each condition
+# Plot the number of cells in each condition
 pdf("HBV CHRONIC NUC VS NAIVEplot1_number of cells in each condition.pdf")
 plotCounts(sce, group_by = "condition", color_by = "sample_id")
 graphics.off()
 
-# run t-SNE/UMAP on at most 1000 cells per sample
+# Run t-SNE/UMAP on at most 1000 cells per sample
 set.seed(1234)
 sce <- runDR(sce, "TSNE", features = "type", cells = 1000)
-
 pdf("PLot_TSNE.pdf")
 plotDR(sce, color_by = "sample_id", "TSNE") + geom_point(size=1)
 graphics.off()
 
-# plot scaled expression of the desired markers
+# Plot scaled expression of the desired markers
 cdx <- rownames(sce)[c(1,6:11,13:15)]
 pdf("Plot_TSNE scaled expression of markers.pdf")
 plotDR(sce, scale = T,color_by = cdx, ncol = 4, a_pal = rev(hcl.colors(10, "Spectral"))) + geom_point(size=0.5) 
